@@ -1,2 +1,2 @@
 # MM
-New personal project
+New personal project. Will be starting soon
