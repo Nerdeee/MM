@@ -1,0 +1,16 @@
+balding: 1
+normal: 3
+maturing: 1
+and im not balding: 1
+i dont see:
+has a natural:
+yes <- exact
+no <- exact
+nah <- exact
+you're good
+ur good
+nope
+a natural
+rip <- exact
+my condolences
+full on sentences: 17
