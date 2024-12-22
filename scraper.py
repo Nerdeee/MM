@@ -14,8 +14,20 @@ import re
 sia = SentimentIntensityAnalyzer()
 
 class RequestHandler:
-    def __init__(self):
-        return
+    def __init__(self, praw_obj, subreddit_name):
+        self.reddit_obj = praw_obj
+        self.subreddit_obj = subreddit_name
+
+    def getSubreddit(self):
+        return "Subreddit name: " + self.subreddit_obj.display_name
+    
+    def getTitles(self, query_string, batches):
+        subreddit = self.subreddit_obj
+        search_results = subreddit.search(query_string, limit=1000)
+        print("\n---------------------- OP Titles ----------------------\n")
+        for posts in search_results:
+            if query_string in posts.title:
+                print(f'Post title: {posts.title} Post URL: {posts.url}')
 
 def sentimentTest(text):
         score = sia.polarity_scores(text)
@@ -35,12 +47,15 @@ def main():
 
     sia.lexicon.update(custom_lexicon)
 
-    regular_expressions = [re.compile("normal"), re.compile("maturing"), re.compile("rip"), re.compile("my condolences"),
+    query_string = "balding"
+
+    comment_regular_expressions = [re.compile("normal"), re.compile("maturing"), re.compile("rip"), re.compile("my condolences"),
                            re.compile("and im not balding"), re.compile("i dont see"), re.compile("has a natural"),
                            re.compile("yes"), re.compile("no"), re.compile("nah"), re.compile("you're good"), re.compile("ur good"),
                            re.compile("nope"), re.compile("a natural"), re.compile("balding"), re.compile("you're balding"),
                            re.compile("your balding"), re.compile("ur balding"), re.compile("yr balding"), re.compile("fin"),
                            re.compile("thin"), re.compile("thinning")]
+
 
     test_cases = [
         "looks like you're balding",
@@ -55,9 +70,9 @@ def main():
     reddit = praw.Reddit(
         client_id=os.getenv('CLIENT_ID'),
         client_secret=os.getenv('CLIENT_SECRET'),
-        password=os.getenv('PASSWORD'),
+        #password=os.getenv('PASSWORD'),
         user_agent=os.getenv('USER_AGENT'),
-        username=os.getenv('USERNAME'),
+        #username=os.getenv('USERNAME'),
     )
 
     # Test area
@@ -69,8 +84,12 @@ def main():
     print()
     for sentence in test_cases:
         print(f'Sentence: {sentence}')
-        for regex in regular_expressions:
+        for regex in comment_regular_expressions:
             print(f'{regex} --- {regex.search(sentence)}')
-                
+    subreddit = reddit.subreddit("malehairadvice")
+    batches = 1
+    requestHandler = RequestHandler(reddit, subreddit, batches)
+    print(requestHandler.getSubreddit())
+    requestHandler.getTitles(query_string)               
 if __name__ == "__main__":
     main()
