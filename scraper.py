@@ -5,7 +5,8 @@ import os
 from dotenv import load_dotenv
 import nltk
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
-import re 
+import re
+from praw.models import MoreComments 
 
 # look at differences between requests and beautifulsoup and which one would be best for my needs
 
@@ -22,12 +23,36 @@ class RequestHandler:
         return "Subreddit name: " + self.subreddit_obj.display_name
     
     def getTitles(self, query_string, batches):
+        reddit = self.reddit_obj
         subreddit = self.subreddit_obj
         search_results = subreddit.search(query_string, limit=1000)
         print("\n---------------------- OP Titles ----------------------\n")
+        test = 0
+        test2 = 0
         for posts in search_results:
             if query_string in posts.title:
+                ex = posts.url.split("/")
                 print(f'Post title: {posts.title} Post URL: {posts.url}')
+                if len(ex) == 5:
+                    test += 1
+                else:
+                    test2 += 1
+        print('number of gallery links', test)
+        print('number of image links', test2)
+        #print(test) # 147
+        submission = reddit.subreddit("malehairadvice").search(f"url:https://i.redd.it/dmlnq0fx1wq91.jpg", limit=1)
+        for post in submission:
+            print(f"Title: {post.title}")
+            print(f"Author: {post.author}")
+            print(f"Submission URL: {post.url}")
+            print(f"Selftext: {post.selftext}")  # If there's text in the post
+            print(f"Number of comments: {post.num_comments}")
+            for i, comment in enumerate(post.comments.list()):
+                if isinstance(comment, MoreComments):
+                    continue
+                if comment.body == "[deleted]" or comment.body == "\n":
+                    continue
+                print(f'{i}th comment: {comment.body}')
 
 def sentimentTest(text):
         score = sia.polarity_scores(text)
@@ -70,9 +95,7 @@ def main():
     reddit = praw.Reddit(
         client_id=os.getenv('CLIENT_ID'),
         client_secret=os.getenv('CLIENT_SECRET'),
-        #password=os.getenv('PASSWORD'),
         user_agent=os.getenv('USER_AGENT'),
-        #username=os.getenv('USERNAME'),
     )
 
     # Test area
@@ -88,8 +111,8 @@ def main():
             print(f'{regex} --- {regex.search(sentence)}')
     subreddit = reddit.subreddit("malehairadvice")
     batches = 1
-    requestHandler = RequestHandler(reddit, subreddit, batches)
+    requestHandler = RequestHandler(reddit, subreddit)
     print(requestHandler.getSubreddit())
-    requestHandler.getTitles(query_string)               
+    requestHandler.getTitles(query_string, batches)               
 if __name__ == "__main__":
     main()
