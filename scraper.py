@@ -14,15 +14,14 @@ from praw.models import MoreComments
 
 sia = SentimentIntensityAnalyzer()
 
-class RequestHandler:
+class RedditAPIHandler:
     def __init__(self, praw_obj, subreddit_name):
         self.reddit_obj = praw_obj
         self.subreddit_obj = subreddit_name
-
+        self.sentiment_array = []
     def getSubreddit(self):
         return "Subreddit name: " + self.subreddit_obj.display_name
-    
-    def getTitles(self, query_string, batches, regexs):
+    def getTitles(self, query_string, batches):
         reddit = self.reddit_obj
         subreddit = self.subreddit_obj
         search_results = subreddit.search(query_string, limit=1000)
@@ -33,14 +32,26 @@ class RequestHandler:
             if query_string in posts.title:
                 ex = posts.url.split("/")
                 print(f'Post title: {posts.title} Post URL: {posts.url}')
-                if len(ex) == 5:
+                if len(ex) == 5: # gallery / OP ID is in URL
                     test += 1
-                else:
+
+                else:   # means that the link is an image link and more operations need to be performed to get the OP info
                     test2 += 1
         print('number of gallery links', test)
         print('number of image links', test2)
 
         # testing
+        gallery_submission = reddit.submission(url="https://www.reddit.com/gallery/1ahusip")
+        print(f'Gallery submission title: {gallery_submission.title}\n')
+        print('\n\n----Comments----\n')
+        for i, c in enumerate(gallery_submission.comments.list()):
+            if i > 4:
+                break
+            if isinstance(c, MoreComments):
+                continue
+            else:
+                print(f'comment {i} : {c.body}')
+        print("--------------------------------------------------")
         submission = reddit.subreddit("malehairadvice").search(f"url:https://i.redd.it/dmlnq0fx1wq91.jpg", limit=1)
         for post in submission:
             print(f"Title: {post.title}")
@@ -48,16 +59,28 @@ class RequestHandler:
             print(f"Submission URL: {post.url}")
             print(f"Selftext: {post.selftext}")  # If there's text in the post
             print(f"Number of comments: {post.num_comments}")
-            for i, comment in enumerate(post.comments.list()):
+            """ for i, comment in enumerate(post.comments.list()):
                 if isinstance(comment, MoreComments):
                     continue
                 if comment.body == "[deleted]" or comment.body == "\n":
                     continue
-                print(f'{i}th comment: {comment.body}')
-
-def sentimentTest(text):
-        score = sia.polarity_scores(text)
-        print(score)
+                print(f'{i}th comment: {comment.body}') """
+    def sentimentTest(self, text_array, pos_regexs, neg_regexs): # text_array will contain an array of comments per OP
+            # see the number of times a word from each category appears and then whichever onehas a grater number, wins. If they tie, defauly to balding class
+            original_post_sentiment = ""
+            result_array = []
+            for comment in text_array:
+                for text in comment:
+                    pos_sentiment = re.search(text, pos_regexs)
+                    neg_sentiment = re.search(text, neg_regexs)
+                    if neg_sentiment >= pos_sentiment:
+                        result_array.append("negative")
+                    else:
+                        result_array.append("positive")
+            original_post_sentiment = "negative" if result_array.count("negative") >= result_array.count("positive") else "positive"
+            self.sentiment_array.append(original_post_sentiment)
+            return
+                
 
 def main():
     custom_lexicon = {
@@ -84,7 +107,8 @@ def main():
 
     negative_regexs = [re.compile("maturing"), re.compile("^rip"), re.compile("my condolences"), re.compile("yes"), re.compile("you're balding"), re.compile("balding"),
                        re.compile("your balding"), re.compile("ur balding"), re.compile("yr balding"), re.compile("fin"), re.compile("thin"), re.compile("thinning"),
-                       re.compile("min"), re.compile("shave"), re.compile("embrace"), re.compile("meds")]
+                       re.compile("min"), re.compile("shave"), re.compile("embrace"), re.compile("meds"), re.compile("dutasteride"), re.compile("isn't working"),
+                       re.compile("isnt working")]
 
     positive_regexs = [re.compile("normal"), re.compile("and im not balding"), re.compile("dont see"), re.compile("a natural"), re.compile("no"), re.compile("nah"),
                        re.compile("you're good"), re.compile("ur good"), re.compile("nope")]
@@ -118,8 +142,8 @@ def main():
             print(f'{regex} --- {regex.search(sentence)}')
     subreddit = reddit.subreddit("malehairadvice")
     batches = 1
-    requestHandler = RequestHandler(reddit, subreddit)
-    print(requestHandler.getSubreddit())
-    requestHandler.getTitles(query_string, batches)               
+    redditAPIHandler = RedditAPIHandler(reddit, subreddit)
+    print(redditAPIHandler.getSubreddit())
+    redditAPIHandler.getTitles(query_string, batches)               
 if __name__ == "__main__":
     main()
