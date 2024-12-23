@@ -15,10 +15,13 @@ from praw.models import MoreComments
 sia = SentimentIntensityAnalyzer()
 
 class RedditAPIHandler:
-    def __init__(self, praw_obj, subreddit_name):
+    def __init__(self, praw_obj, subreddit_name, p_regexs, n_regexs):
         self.reddit_obj = praw_obj
         self.subreddit_obj = subreddit_name
         self.sentiment_array = []
+        self.pos_regexs = p_regexs
+        self.neg_regexs = n_regexs
+        self.image_link_array = []
     def getSubreddit(self):
         return "Subreddit name: " + self.subreddit_obj.display_name
     def getTitles(self, query_string, batches):
@@ -32,9 +35,19 @@ class RedditAPIHandler:
             if query_string in posts.title:
                 ex = posts.url.split("/")
                 print(f'Post title: {posts.title} Post URL: {posts.url}')
+                comment_array = []
                 if len(ex) == 5: # gallery / OP ID is in URL
                     test += 1
-
+                    i = 0
+                    while i < 5:
+                        for comment in posts.comments.list():
+                            if isinstance(comment, MoreComments):
+                                continue
+                            else:
+                                comment_array.append(comment.body)
+                        i += 1
+                    self.sentimentTest(comment_array, self.pos_regexs, self.neg_regexs)
+                    
                 else:   # means that the link is an image link and more operations need to be performed to get the OP info
                     test2 += 1
         print('number of gallery links', test)
@@ -52,6 +65,19 @@ class RedditAPIHandler:
             else:
                 print(f'comment {i} : {c.body}')
         print("--------------------------------------------------")
+        if gallery_submission.is_gallery:
+            print('Images in gallery')
+            for item in gallery_submission.gallery_data['items']:
+                item_id = item['media_id']  # Access the media ID
+                media_metadata = gallery_submission.media_metadata
+                if item_id in media_metadata:
+                    # Access the media URL
+                    image_url = media_metadata[item_id]['s']['u']  # 'p' contains preview sizes
+                    self.image_link_array.append(image_url)
+                    sentiment = self.sentimentTest(, self.pos_regexs, self.neg_regexs)                                          # WORK ON THIS
+                    self.sentiment_array.append(sentiment)
+                    print('\n\nHELLO\n\n')
+                    print(f'IMAGE URL FOR GALLERY - {image_url}')
         submission = reddit.subreddit("malehairadvice").search(f"url:https://i.redd.it/dmlnq0fx1wq91.jpg", limit=1)
         for post in submission:
             print(f"Title: {post.title}")
@@ -71,16 +97,30 @@ class RedditAPIHandler:
             result_array = []
             for comment in text_array:
                 for text in comment:
-                    pos_sentiment = re.search(text, pos_regexs)
-                    neg_sentiment = re.search(text, neg_regexs)
-                    if neg_sentiment >= pos_sentiment:
-                        result_array.append("negative")
-                    else:
-                        result_array.append("positive")
-            original_post_sentiment = "negative" if result_array.count("negative") >= result_array.count("positive") else "positive"
-            self.sentiment_array.append(original_post_sentiment)
+                    pos = 0
+                    neg = 0
+                    for p_regex in pos_regexs:
+                        match = re.search(text, p_regex)
+                        if match != None:
+                            pos += 1
+                    for n_regex in neg_regexs:
+                        match = re.search(text, n_regex)
+                        if match != None:
+                            neg += 1
+                    # TO DO
             return
-                
+    def downloadImages(self):
+        os.chdir('E:\\')
+        img_folder = os.path.join(os.getcwd(), "balding_images")        
+        for i, img_link in enumerate(self.image_array):
+            r = requests.get(f"{img_link}")
+            if r.status_code == 200:
+                with open(img_folder, 'wb') as file:
+                    file.write(r.content)
+                print(f'Image {i} successfully downloaded')
+            else:
+                print(f'Error retrieving image from reddit. Status code {r.status_code}')
+        return            
 
 def main():
     custom_lexicon = {
@@ -142,8 +182,9 @@ def main():
             print(f'{regex} --- {regex.search(sentence)}')
     subreddit = reddit.subreddit("malehairadvice")
     batches = 1
-    redditAPIHandler = RedditAPIHandler(reddit, subreddit)
+    redditAPIHandler = RedditAPIHandler(reddit, subreddit, positive_regexs, negative_regexs)
     print(redditAPIHandler.getSubreddit())
-    redditAPIHandler.getTitles(query_string, batches)               
+    redditAPIHandler.getTitles(query_string, batches)    
+    redditAPIHandler.downloadImages()           
 if __name__ == "__main__":
     main()
