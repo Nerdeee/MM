@@ -22,7 +22,7 @@ class RequestHandler:
     def getSubreddit(self):
         return "Subreddit name: " + self.subreddit_obj.display_name
     
-    def getTitles(self, query_string, batches):
+    def getTitles(self, query_string, batches, regexs):
         reddit = self.reddit_obj
         subreddit = self.subreddit_obj
         search_results = subreddit.search(query_string, limit=1000)
@@ -39,7 +39,8 @@ class RequestHandler:
                     test2 += 1
         print('number of gallery links', test)
         print('number of image links', test2)
-        #print(test) # 147
+
+        # testing
         submission = reddit.subreddit("malehairadvice").search(f"url:https://i.redd.it/dmlnq0fx1wq91.jpg", limit=1)
         for post in submission:
             print(f"Title: {post.title}")
@@ -74,13 +75,19 @@ def main():
 
     query_string = "balding"
 
-    comment_regular_expressions = [re.compile("normal"), re.compile("maturing"), re.compile("rip"), re.compile("my condolences"),
-                           re.compile("and im not balding"), re.compile("i dont see"), re.compile("has a natural"),
+    comment_regular_expressions = [re.compile("normal"), re.compile("maturing"), re.compile("^rip"), re.compile("my condolences"),
+                           re.compile("and im not balding"), re.compile("dont see"), re.compile("a natural"),
                            re.compile("yes"), re.compile("no"), re.compile("nah"), re.compile("you're good"), re.compile("ur good"),
-                           re.compile("nope"), re.compile("a natural"), re.compile("balding"), re.compile("you're balding"),
+                           re.compile("nope"), re.compile("balding"), re.compile("you're balding"),
                            re.compile("your balding"), re.compile("ur balding"), re.compile("yr balding"), re.compile("fin"),
-                           re.compile("thin"), re.compile("thinning")]
+                           re.compile("thin"), re.compile("thinning"), re.compile("min"), re.compile("shave"), re.compile("embrace"), re.compile("meds")]
 
+    negative_regexs = [re.compile("maturing"), re.compile("^rip"), re.compile("my condolences"), re.compile("yes"), re.compile("you're balding"), re.compile("balding"),
+                       re.compile("your balding"), re.compile("ur balding"), re.compile("yr balding"), re.compile("fin"), re.compile("thin"), re.compile("thinning"),
+                       re.compile("min"), re.compile("shave"), re.compile("embrace"), re.compile("meds")]
+
+    positive_regexs = [re.compile("normal"), re.compile("and im not balding"), re.compile("dont see"), re.compile("a natural"), re.compile("no"), re.compile("nah"),
+                       re.compile("you're good"), re.compile("ur good"), re.compile("nope")]
 
     test_cases = [
         "looks like you're balding",
